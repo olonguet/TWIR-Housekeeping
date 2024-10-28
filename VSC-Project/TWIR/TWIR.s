@@ -46,23 +46,16 @@ neilwbpbpl   =  neilw/8            ; gets the neil width in bytes . This is the 
 neilbwid     =  neilwbpbpl*neilbitplanes       ; neil byte width for all bitplanes .  
 neilmodulo   =  neilbwid-neilwbpbpl ;modulo in bytes
 
-
-twirlogow  = 288                      
-twirlogoh  = 71
-twirlogobitplanes = 3
-twirlogomargin = (320-twirlogow)/2       
-twirlogowbpbpl   =  twirlogow/8            
-twirlogobwid     =  twirlogowbpbpl*twirlogobitplanes         
-twirlogomodulo   =  twirlogobwid-twirlogowbpbpl 
-
-; ------------ fonts --------
+; ------------ fonts & Characters--------
 fontw         =  288    
-fonth         =  100    
+fonth         =  145    
 fontbpls      =  3
 fontbpl       =  fontw/8
+charh         =  29
+charw         =  32
 
-plotY =  140     ; y position to where we want the font character to appear
-plotx = w-32    ; character to left ot screen
+plotY =  130     ; y position to where we want the font character to appear
+plotx = w-charw    ; character to left ot screen
 Start:
 
 OSoff:
@@ -240,7 +233,7 @@ ok2:
        bsr Scrollit
 
 *********** CHARACTER CHECKS
-       moveq #32,d2                              ; length of a character for wrapping 
+       moveq #charw,d2                            ; length of a character for wrapping 
 	move.b LastChar(PC),d0                    ; check latest character plotted
  
        cmp.b #"I",d0                             ; is it an I ?
@@ -294,7 +287,7 @@ ok2:
 **************************************************************************************
 ********************************************** ROUTINES ******************************
 **************************************************************************************
-row = 288*3*20/8
+row = fontw*3*charh/8
 col     =4
 charperow = 9
 PlotChar:                                        ; takes a0 = Scrollptr 
@@ -337,7 +330,7 @@ PlotChar:                                        ; takes a0 = Scrollptr
 	move.w #fontbpl-col,BLTAMOD(a6)         ; -4 is because we're blitting  words (32 pixel wide font)
 	move.w #ScrBpl-col,BLTDMOD(a6)              
 
-	move.w #20*3*64+2,BLTSIZE(a6)      ; characters are 20 high, 3 bitplanes, width of window is 2 words (32 pixels)
+	move.w #charh*3*64+2,BLTSIZE(a6)      ; characters are 20 high, 3 bitplanes, width of window is 2 words (32 pixels)
 	movem.l (sp)+,d0-a6
 	rts
 
@@ -352,7 +345,7 @@ Scrollit:
 bltoffs =plotY*(ScrBpl*3)          ;  size in byte of the offset to the screen buffer (ploty=140 )
  
                                           ;( 30 times the width of each screen line (in bytes so /8) + x value in byttes
-blth   =20                               ; height of box in pixels
+blth   =charh                               ; height of box in pixels
 bltw   =w/16                            ; width in words (a width of 224 pixels / 16 )
 bltskip =0                                ;modulo of the blitter in bytes (space between the end of blitted line and begining of next line)    
 brcorner=(blth)*(ScrBpl*3)-2            ;Bottom right corner for Desc mode in DMACON0 (in bytes)
@@ -654,9 +647,9 @@ ScrBplPt:                          ;bitplane pointers for after the neil
        dc.w   $a907,$fffe    
        
        
-       dc.w $0180,$C6A,$0182,$0e8d,$0184,$0a49,$0186,$0c5b
-	dc.w $0188,$0e8d,$018a,$0ead,$018c,$0ede,$018e,$0fff
- 
+       dc.w $0180,$C6A,$0182,$fff,$0184,$53F,$0186,$f00
+	dc.w $0188,$f00,$018a,$f00,$018c,$f00,$018e,$f00
+
        dc.w   $FF07,$fffe
        
 FontPalP:  ; DUMMY Pallet!! will be filled by FontPallFill
@@ -669,16 +662,14 @@ FontPalP:  ; DUMMY Pallet!! will be filled by FontPallFill
 CopperE:
 
 Font:
-       INCBIN "fonts/FastCarFont.284x100x3"
+       INCBIN "fonts/TWIRFont-288x145x3"
 FontE:
 
 neil:  INCBIN "TWIRFACESLOGO283x71x5"
 neilE:
        dcb.b neilbwid*6,0                     ; this is to prevent crap from showing up at the bottom of the neil
                                               ; dcb declare block
-twirlogo:  INCBIN "TWIRLOGO-283x71x3"
-twirlogoE:
-       dcb.b twirlogobwid*6,0  
+
 
 Module1:
 	incbin "P61.cli_loop_315.911D.mod"		;usecode $c00b43b
