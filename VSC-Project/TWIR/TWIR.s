@@ -25,6 +25,16 @@ INTENA  =$dff09a
 INTREQ  =$dff09c  
 DMACON  =$dff096
 
+DIWSTRT = $8e
+DIWSTOP = $90
+DDFSTRT = $92
+DDFSTOP = $94 
+BPL1PTH = $e0
+BPL1PTL = $e2
+BPL2PTH = $e4
+BPL2PTL = $e6
+BPLCON0 = $100
+
 ;;--------------------------------- SCREEN BUFFER DIMENSIONS
 w       =320+32       ;SCREEN WIDTH + 32  extend screen buffer by the width of one character to prevent blobbing/clipping
 h      =256          ;screen height'
@@ -330,7 +340,7 @@ PlotChar:                                        ; takes a0 = Scrollptr
 	move.w #fontbpl-col,BLTAMOD(a6)         ; -4 is because we're blitting  words (32 pixel wide font)
 	move.w #ScrBpl-col,BLTDMOD(a6)              
 
-	move.w #charh*3*64+2,BLTSIZE(a6)      ; characters are 20 high, 3 bitplanes, width of window is 2 words (32 pixels)
+	move.w #charh*3*64+2,BLTSIZE(a6)      ; characters are 29 high, 3 bitplanes, width of window is 2 words (32 pixels)
 	movem.l (sp)+,d0-a6
 	rts
 
@@ -457,11 +467,11 @@ Playrtn:
 	include "P6110/P6110-Play.i"
 
 
-FontTBl:                                  ;font lookup table . start font at SPACE character (value $32) so this orders them sequentially in ASCII
+FontTBl:                                  ;font lookup table. start font at SPACE character (value $32) so this orders them sequentially in ASCII
        dc.b 43,38                         ; 43rd character is space, 38 is !  / special characters are after 9 .,!?-/'SPACE
-	blk.b 5,0
+	blk.b 5,0                          ; skip 5 character in the ascii table
 	dc.b 42                            ; '
-	blk.b 4,0
+	blk.b 4,0                          ; 4 chars skipped
 	dc.b 37,40,36,41                   ;  ,-./
 	dc.b 26,27,28,29,30,31,32,33,34,35 ; 0,1,2,3,4,5,6,7,8,9
 	blk.b 5,0
@@ -473,7 +483,7 @@ FontTBl:                                  ;font lookup table . start font at SPA
 ScrollPtr:
        dc.l   ScrollText
 ScrollText:
-       dc.b "THIS IS DAVE'S HOUSEKEEPING SEGMENT !!! EVERY SECOND MONDAY OF EACH THURSDAY !!! "
+       dc.b "EWRQW THIS IS DAVE'S HOUSEKEEPING SEGMENT !!! EVERY SECOND MONDAY OF EACH THURSDAY !!! "
        blk.b w/32,' '       
 ScrollTextWrap:
 
@@ -495,22 +505,22 @@ gfxname:
  
 	SECTION TutData,DATA_C
  Spr:
-	dc.w $9840,$A800	;Vstart.b/Hstart/2.b , Vstop.b (Vstart.b+number of lines),%A0000SEH
-	dc.w %1111110110000011,%0000000000000000
-	dc.w %1111110110000011,%0000000000000000
-	dc.w %0011000011011011,%0000000000000000
-	dc.w %0011000011111110,%0000000000000000
-	dc.w %0011000001100110,%0000000000000000
-	dc.w %0011000000100100,%0000000000000000
-	dc.w %0011000000000000,%0000000000000000
-	dc.w %0000000000000000,%0000000000000000
-	dc.w %0110001111100000,%0000000000000000
-	dc.w %0110001111111000,%0000000000000000
-	dc.w %0110001100011100,%0000000000000000
-	dc.w %0110001111111100,%0000000000000000
-	dc.w %0110001101111000,%0000000000000000
-	dc.w %0110001100011100,%0000000000000000
-	dc.w %0110001100001110,%0000000000000000
+	dc.w $9940,$A900	;Vstart.b/Hstart/2.b , Vstop.b (Vstart.b+number of lines),%A0000SEH
+	dc.w %1101111111111100,%0000111111111000
+	dc.w %1111111111111110,%0000111110011000
+	dc.w %1111111111111111,%0000111110011000
+	dc.w %1111111111111111,%0000111110011000
+	dc.w %1111111111111111,%0000011111111000
+	dc.w %1111111111111111,%0000000000000000
+	dc.w %1111111111111111,%0000000000000000
+	dc.w %1111111111111111,%0000111111111000
+	dc.w %1111111111111111,%0001111111111100
+	dc.w %1111111111111111,%0001111111111100
+	dc.w %1111111111111111,%0001111111111100
+	dc.w %1111111111111111,%0001111111111100
+	dc.w %1011111111111111,%0001111111111100
+	dc.w %1111111111111111,%0001111111111100
+	dc.w %0111111111111110,%0000000000000000
 
 	dc.w 0,0
 
@@ -522,29 +532,32 @@ NullSpr:
        ;SECTION tut,DATA_C                    ; create section to put copperlist in chipmem
 Copper:
        dc.w $1fc,0                             ;set slow fetch mode for AGA compatibility
-       dc.w $100,$0200                         ;bitplane control register https://amigadev.elowar.com/read/ADCD_2.1/Hardware_Manual_guide/node0022.html
+       dc.w BPLCON0,$0200                         ;bitplane control register https://amigadev.elowar.com/read/ADCD_2.1/Hardware_Manual_guide/node0022.html
 
                                                ;typical: 320 pixel WIDE
                                                ;diw: 0x81 <-> 0xc1 (0x1c1) DIW = display window position.
                                                ;ddf: 0x38 <-> D0(D7) DMA position (note that DDFSTRT is not restricted to divisible by 8 values, other values do work but can cause bitplane delays to work strangely)
                                                ;DFSTRT=$38 -> DIWSTRT $81. For each 16px you add/subtract from DIWSTRT, add/subtract 8 from DDFSTRT
-                                                                                        
-       dc.w $8e,$4c81                          ;DIWSTRT display window start https://amigadev.elowar.com/read/ADCD_2.1/Hardware_Manual_guide/node002E.html
-       dc.w $90,$2cc1                          ;DIWSTOP display window stop DIWSTRT+value 4c + 2a = 76
-       dc.w $92,$38+neilmargin/2               ;DDFSTRT display bitplane DMA fetch start https://amigadev.elowar.com/read/ADCD_2.1/Hardware_Manual_guide/node002C.html
-       dc.w $94,$d0-neilmargin/2               ;DDFSTOP display bitplane dataf fetch stop 
-                                               ;(38 and d0 are standard values for a non overscann screen)
+                                                                                
+       dc.w DIWSTRT,$4c81                      ;DIWSTRT display window start https://amigadev.elowar.com/read/ADCD_2.1/Hardware_Manual_guide/node002E.html
+       dc.w DIWSTOP,$2cc1                      ;DIWSTOP display window stop DIWSTRT+value 4c + 2a = 76
+                                               
+                                               ;DFFSTRT acts as the stage and DIWSRT the curtain that stage
+
+       dc.w DDFSTRT,$38+neilmargin/2           ;DDFSTRT display bitplane DMA fetch start https://amigadev.elowar.com/read/ADCD_2.1/Hardware_Manual_guide/node002C.html
+       dc.w DDFSTOP,$d0-neilmargin/2           ;DDFSTOP display bitplane dataf fetch stop 
+                                               ;(38 and d0 are standard values for a non overscann screen) 
+                                               ; they also have to be multiples of 8
                                                ;these tells the DMA chip when to start and stop fetching data from the bitplanes
                                                ;for each scanlnes.
                                                ; each H value = 2 pixels so from 3800 , 3801 is 2 pixels after
                                                ;as you shrink the window size you substact half from DDF values
 
-
        dc.w $108,neilmodulo                    ; bitplane modulos https://amigadev.elowar.com/read/ADCD_2.1/Hardware_Manual_guide/node0021.html
 	dc.w $10a,neilmodulo                    ;108 BPL1MOD 10a BPL2OD
 	dc.w $102,0                             ; BPLCON1 / Bit Plane Control Register (horizontal, scroll counter)
 
-       dc.w $100,$5200 
+       dc.w BPLCON0,$5200 
 
 
 SprBplPt:
@@ -564,6 +577,8 @@ SprBplPt:
 	dc.w $13a,0
 	dc.w $13c,0
 	dc.w $13e,0
+
+
 
 neilBplPt:                          ; bitplane pointers
        dc.w $e0,0                  ;BPL1PTH and BPL2PTL BITPLANE POINTER high 3 bits and L 15bits
@@ -587,7 +602,7 @@ neilBplPt:                          ; bitplane pointers
        dc.w $4707,$fffe
 
 neilPal:
- 	dc.w $0180,$0301,$0182,$0fff,$0184,$0fdb,$0186,$0fb9
+ 	dc.w $0180,$0000,$0182,$0fff,$0184,$0fdb,$0186,$0fb9
        dc.w $0188,$0e97,$018a,$0b86,$018c,$0954,$018e,$0433
        dc.w $0190,$0421,$0192,$0211,$0194,$09ae,$0196,$0bcf
        dc.w $0198,$0576,$019a,$0244,$019c,$0544,$019e,$045c
@@ -596,33 +611,49 @@ neilPal:
        dc.w $01b0,$0777,$01b2,$0888,$01b4,$0999,$01b6,$0aaa
        dc.w $01b8,$0ccc,$01ba,$0ddd,$01bc,$0eee,$01be,$0fff
 
+       dc.w $4A07,$FFFE
+       dc.w $0180,$0100
+       dc.w $4d07,$FFFE
+       dc.w $0180,$0000
+       dc.w $4e7,$FFFE
+       dc.w $0180,$0100
+       dc.w $4f7,$FFFE
+       dc.w $0180,$0201
 
-       dc.w $100,$5200                           ;set the number of bitplanes in PBLCON0 to 3                  
+       dc.w $5207,$FFFE
+       dc.w $0180,$0201
+       dc.w $5307,$FFFE
+       dc.w $0180,$0101
+       dc.w $5407,$FFFE
+       dc.w $0180,$0201     
+
+       dc.w $0180,$0301
+       dc.w $5607,$FFFE
+       dc.w $0180,$0201
+       dc.w $5907,$FFFE
+       dc.w $0180,$0301
+
+       dc.w BPLCON0,$5200                           ;set the number of bitplanes in PBLCON0 to 3                  
 
 
 waitras1:
        dc.w   $8007,$fffe                    ;top bar
        dc.w   $180,$469
-waitras2:
        dc.w   $8107,$fffe
        dc.w   $180,$69c
-waitras3:
        dc.w   $8207,$fffe
        dc.w   $180,$fff
-waitras4:
        dc.w   $8307,$fffe
        dc.w   $180,$69c
-waitras5:
        dc.w   $8407,$fffe
        dc.w   $180,$469
-waitras6:
        dc.w   $8507,$fffe
        dc.w   $180,$301
 
       
        dc.w   $9607,$fffe
        dc.w   $180,$FFF
-       dc.w   $100,$0200
+       ;dc.w   BPLCON0,$0200
        dc.w   $97df,$fffe          ; points to end of line instead of next line 
                                    ;this is to allow time to set the font pallet during Hblank
 
@@ -636,15 +667,15 @@ ScrBplPt:                          ;bitplane pointers for after the neil
        dc.w   $ea,0
 	dc.w   $108,ScrBpl*3-320/8               ;BPL1MOD 
 	dc.w   $10a,ScrBpl*3-320/8                 ;BPL2MOD 
-	dc.w   $92,$38              ;DDFSTRT Display bit plane data fetch start,horiz pos
-	dc.w   $94,$d0              ;DDFSTOP
-	dc.w   $100,$3200           ;BPLCON0 as an example, this could be dynami
+	dc.w   DDFSTRT,$38              ;DDFSTRT Display bit plane data fetch start,horiz pos
+	dc.w   DDFSTOP,$d0              ;DDFSTOP
+	dc.w   BPLCON0,$3200           ;BPLCON0 as an example, this could be dynami
                                    ; dc.w $100,fontbpl*$1000+$200
 
 	Dc.w   $180,$53e
-       dc.w   $a707,$fffe
+       dc.w   $a907,$fffe
  	Dc.w   $180,$fff
-       dc.w   $a907,$fffe    
+       dc.w   $ab07,$fffe    
        
        
        dc.w $0180,$C6A,$0182,$fff,$0184,$53F,$0186,$f00
