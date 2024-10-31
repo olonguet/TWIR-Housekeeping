@@ -1,6 +1,0 @@
-[submodule "TWIR"]
-	path = TWIR
-	url = https://github.com/olonguet/TWIR
-[submodule "VSC-Project/TWIR"]
-	path = VSC-Project/TWIR
-	url = https://github.com/olonguet/TWIR
